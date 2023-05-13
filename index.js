@@ -26,12 +26,79 @@ async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
+        const database = client.db("car-doctor");
+        const servicecolection = database.collection("sirvices")
+        const bookingecolection = database.collection("bookings")
+
+        // booking
+        app.get('/bookings', async (req, res) => {
+            console.log(req.query.email);
+            let query = {}
+            if (req.query?.email) {
+                query = { email: req.query.email }
+            }
+            const cursor = bookingecolection.find(query);
+            const result = await cursor.toArray()
+            res.send(result)
+
+        })
+
+        app.post('/bookings', async (req, res) => {
+            const booking = req.body;
+            console.log(booking);
+            const result = await bookingecolection.insertOne(booking);
+            res.send(result)
+        })
+        app.put('/bookings/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatebooking = req.body
+            console.log(updatebooking);
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true }
+            const booking = {
+                $set: {
+                    status: updatebooking.status
+
+                },
+            };
+            const result = await bookingecolection.updateOne(filter, booking, options);
+            res.send(result)
+
+        })
+        app.delete('/bookings/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log('please delete from database', id);
+            const query = { _id: new ObjectId(id) };
+            const result = await bookingecolection.deleteOne(query);
+            res.send(result)
+        })
+
+        app.get('/sirvices', async (req, res) => {
+            const cursor = servicecolection.find();
+            const result = await cursor.toArray()
+            res.send(result)
+
+        })
+
+        app.get('/sirvices/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const options = {
+                projection: { title: 1, price: 1, service_id: 1, img: 1 },
+            };
+            const result = await servicecolection.findOne(query, options);
+            res.send(result);
+        })
+
+
+
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
-        await client.close();
+        // await client.close();
     }
 }
 run().catch(console.dir);
