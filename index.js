@@ -1,6 +1,8 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
+
 const port = process.env.PORT || 4000;
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -21,6 +23,23 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+const varifyJWT = (req, res, next) => {
+    console.log('hitting');
+    console.log(req.headers.authurizataion);
+    const authurizataion = req.headers.authurizataion;
+    if (!authurizataion) {
+        return res.status(401).send({ error: true, message: 'unauthurized access' })
+    }
+    const token = authurizataion.split(' ')[1]
+    console.log('token varify jwt', token);
+    jwt.verify(token, process.env.access_token_secret, (error, decoded) => {
+        if (error) {
+            res.status(401).send({ error: true, message: 'unauthurized access' })
+        }
+        req.decoded = decoded;
+        next()
+    })
+}
 
 async function run() {
     try {
@@ -30,9 +49,22 @@ async function run() {
         const servicecolection = database.collection("sirvices")
         const bookingecolection = database.collection("bookings")
 
+        // jwt 
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
+            console.log(user)
+            const token = jwt.sign(user, process.env.access_token_secret, { expiresIn: '1h' })
+
+            res.send({ token })
+        })
         // booking
-        app.get('/bookings', async (req, res) => {
-            console.log(req.query.email);
+        app.get('/bookings', varifyJWT, async (req, res) => {
+            // console.log(req.headers.authurizataion);
+            const decoded = req.decoded
+            console.log('came back after varify', decoded);
+            if (decoded.email !== req.query.email) {
+                return req.status(403).send({ error: 1, message: 'forbidden access' })
+            }
             let query = {}
             if (req.query?.email) {
                 query = { email: req.query.email }
@@ -72,7 +104,7 @@ async function run() {
             const result = await bookingecolection.deleteOne(query);
             res.send(result)
         })
-
+        // services
         app.get('/sirvices', async (req, res) => {
             const cursor = servicecolection.find();
             const result = await cursor.toArray()
