@@ -10,7 +10,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 // Middleware
 app.use(cors())
 app.use(express.json())
-console.log(process.env.db_users);
+// console.log(process.env.db_users);
 
 
 const uri = `mongodb+srv://${process.env.db_users}:${process.env.db_pass}@cluster0.yk6uldw.mongodb.net/?retryWrites=true&w=majority`;
@@ -106,7 +106,14 @@ async function run() {
         })
         // services
         app.get('/sirvices', async (req, res) => {
-            const cursor = servicecolection.find();
+            const sort = req.query.sort;
+            const query = {}
+            const options = {
+                sort: {
+                    "price": sort === 'asc' ? 1 : -1
+                }
+            }
+            const cursor = servicecolection.find(query, options);
             const result = await cursor.toArray()
             res.send(result)
 
